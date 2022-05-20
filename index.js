@@ -27,7 +27,6 @@ app.post("/sign-up", async (req, res) => {
     password: joi.string().required(),
     confirmPassword: joi.ref('password')
   })
-
   try {
     await cadastrarSchema.validateAsync({
       name,
@@ -36,11 +35,9 @@ app.post("/sign-up", async (req, res) => {
       confirmPassword
     }, { abortEarly: false });
     console.log("validou1")
-
   } catch (error) {
     res.status(422).send("Erro ao preencher cadastro");
   }
-
   try {
     const cliente = await db.collection("users").findOne({ email })
     if (cliente) {
@@ -51,7 +48,6 @@ app.post("/sign-up", async (req, res) => {
   } catch (error) {
     console.log("Erro ", error)
   }
-
   try {
     const SALT = 10;
     const passwordHash = bcrypt.hashSync(password, SALT);
@@ -65,24 +61,43 @@ app.post("/sign-up", async (req, res) => {
     console.log("Erro ao criar cliente");
     console.log(error);
     return res.sendStatus(500);
-  } 
+  }
 });
-
 
 app.post("/sign-in", async (req, res) => {
   const { email, password } = req.body;
+  const loginSchema = joi.object({
+    email: joi.string().email().required(),
+    password: joi.string().required()
+  })
   try {
-    const user = await db.collection("users").findOne({ email });
-    if (user && bcrypt.compareSync(password, user.password)) {
-      res.send(user);
-    } else {
-      res.sendStatus(401);
-    }
-  } catch (e) {
-    res.sendStatus(500);
+    await loginSchema.validateAsync(
+      {
+        email,
+        password
+      }, { abortEarly: false });
+  } catch (error) {
+    res.status(422).send("deu erro");
   }
+  try {
+    const cliente = await db.collection("users").findOne({ email: email })
+    console.log("ate aqui")
+    if (!cliente) return res.sendStatus(404);
+    console.log("hoje nao")
+    if (cliente && bcrypt.compareSync(password, cliente.password)) {
+      const token = uuid();
+      await db.collection("sessions").insertOne({ token, clienteId: cliente._id });
+      return res.send({ token, name: cliente.name, clienteId: cliente._id });
+    }
+    return res.sendStatus(201);
+  }
+  catch (error) {
+    console.log("Erro, cliente nao encontrado");
+    console.log(error);
+    return res.sendStatus(500);
+  }
+})
 
-});
 
 app.get("/extrato", async (req, res) => {
   let { authorization } = req.headers;
