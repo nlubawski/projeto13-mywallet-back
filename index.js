@@ -116,7 +116,8 @@ app.get("/extrato", async (req, res) => {
     const cliente = await db.collection("users").findOne({ _id: session.clienteId });
     if (!cliente) return res.status(401).send("Sem usuario");
 
-    const extrato = await db.collection("transactions").find({cliente}).toArray();
+    const extrato = await db.collection("extrato").find({clienteId: cliente._id}).toArray();
+    console.log("extrato", extrato)
     res.send(extrato);
 
   } catch (error) {
