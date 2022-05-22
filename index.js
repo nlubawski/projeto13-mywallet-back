@@ -166,7 +166,7 @@ app.post("/extrato", async (req, res) => {
   } 
 });
 
-const port = process.env.PORTA || 5000;
+const port = process.env.PORT || 5000;
 app.listen(port, () => {
-  console.log(`Server is listening on port ${port}.`);
-})
+  console.log("Server running on port " + process.env.PORT);
+});
