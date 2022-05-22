@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import cors from 'cors'
 import joi from "joi";
 import { v4 as uuid } from 'uuid';
+import dayjs from "dayjs"
 
 dotenv.config();
 
@@ -120,6 +121,45 @@ app.get("/extrato", async (req, res) => {
 
   } catch (error) {
     console.log("Erro ao tentar obter extrato");
+    console.log(error);
+    return res.sendStatus(500);
+  } 
+});
+
+app.post("/extrato", async (req, res) => {
+
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer", "").trim();
+
+  const transactionSchema = joi.object({
+    type: joi.string().required(),
+    description: joi.string().required(),
+    value: joi.number().required()
+  });
+
+  const { error } = transactionSchema.validate(req.body);
+    if(error) return res.status(422).send(error.details.map(detail => detail.message));
+
+  if (!token) return res.status(401).send("Sem token.");
+  try {
+    const session = await db.collection("sessions").findOne({ token });
+    if (!session) return res.status(401).send("Sem sessao");
+
+    const cliente = await db.collection("users").findOne({ _id: session.clienteId });
+    if (!cliente) return res.status(401).send("Sem usuario");
+
+    const { type, description, value } = req.body;
+    await db.collection("extrato").insertOne({
+      type,
+      value,
+      description, 
+      date: dayjs().format('DD/MM'),
+      clienteId: cliente._id
+    });
+    res.sendStatus(201);
+
+  } catch (error) {
+    console.log("Erro ao tentar adicionar transacao");
     console.log(error);
     return res.sendStatus(500);
   } 
