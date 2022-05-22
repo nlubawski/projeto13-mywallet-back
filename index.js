@@ -115,26 +115,17 @@ app.get("/extrato", async (req, res) => {
     const cliente = await db.collection("users").findOne({ _id: session.clienteId });
     if (!cliente) return res.status(401).send("Sem usuario");
 
+    const extrato = await db.collection("transactions").find({cliente}).toArray();
+    res.send(extrato);
+
   } catch (error) {
-    console.log("Erro ao tentar obter usuario");
+    console.log("Erro ao tentar obter extrato");
     console.log(error);
     return res.sendStatus(500);
   } 
-
-  try {
-    const extrato = await db.collection("transactions").find({clienteId: cliente._id}).toArray();
-    res.send(extrato);
-  } catch (error) {
-    console.log("Erro ao obter extrato");
-    console.log(error);
-    return res.sendStatus(500);
-  }
-})
-
-
-
+});
 
 const port = process.env.PORTA || 5000;
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}.`);
-});
+})
