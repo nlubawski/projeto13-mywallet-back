@@ -116,35 +116,19 @@ app.get("/extrato", async (req, res) => {
     if (!cliente) return res.status(401).send("Sem usuario");
 
   } catch (error) {
-    console.log("Erro ao tentar obter usuário através da sessão");
+    console.log("Erro ao tentar obter usuario");
+    console.log(error);
+    return res.sendStatus(500);
+  } 
+
+  try {
+    const extrato = await db.collection("transactions").find({clienteId: cliente._id}).toArray();
+    res.send(extrato);
+  } catch (error) {
+    console.log("Erro ao obter extrato");
     console.log(error);
     return res.sendStatus(500);
   }
-
-  const transacoesSchema = joi.object({
-  type: joi.string().required(),
-  description: joi.string().required(),
-  value: joi.number().required()
-})
-
-const { error } = transacoesSchema.validate(req.body);
-if (error) return res.status(422).send(error.details.map(detail => detail.message));
-
-try {
-  const { type, description, value } = req.body;
-  await db.collection("extrato").insertOne({
-    type,
-    value,
-    description, 
-    date: dayjs().format('DD/MM'),
-    userId: user._id
-  });
-  res.sendStatus(201);
-} catch (error) {
-  console.log("Erro ao adicionar nova transacao");
-  console.log(error);
-  return res.sendStatus(500);
-}
 })
 
 
