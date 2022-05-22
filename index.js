@@ -87,7 +87,12 @@ app.post("/sign-in", async (req, res) => {
     if (cliente && bcrypt.compareSync(password, cliente.password)) {
       const token = uuid();
       await db.collection("sessions").insertOne({ token, clienteId: cliente._id });
-      return res.send({ token, name: cliente.name, clienteId: cliente._id });
+      const data = {
+        token,
+        name: cliente.name,
+        clienteId: cliente._id
+      }
+      return res.send(data);
     }
     return res.sendStatus(201);
   }
@@ -98,23 +103,51 @@ app.post("/sign-in", async (req, res) => {
   }
 })
 
-
 app.get("/extrato", async (req, res) => {
-  let { authorization } = req.headers;
-  const passwordToken = authorization.slice(7);
-  try {
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer", "").trim();
 
-    const user = await db.collection("users").findOne({ password: passwordToken });
-    if (user.password === passwordToken) {
-      res.send(user.extract);
-    } else {
-      res.sendStatus(401);
-    }
-  } catch (e) {
-    res.sendStatus(500);
+  if (!token) return res.status(401).send("Sem token.");
+  try {
+    const session = await db.collection("sessions").findOne({ token });
+    if (!session) return res.status(401).send("Sem sessao");
+
+    const cliente = await db.collection("users").findOne({ _id: session.clienteId });
+    if (!cliente) return res.status(401).send("Sem usuario");
+
+  } catch (error) {
+    console.log("Erro ao tentar obter usuário através da sessão");
+    console.log(error);
+    return res.sendStatus(500);
   }
 
-});
+  const transacoesSchema = joi.object({
+  type: joi.string().required(),
+  description: joi.string().required(),
+  value: joi.number().required()
+})
+
+const { error } = transacoesSchema.validate(req.body);
+if (error) return res.status(422).send(error.details.map(detail => detail.message));
+
+try {
+  const { type, description, value } = req.body;
+  await db.collection("extrato").insertOne({
+    type,
+    value,
+    description, 
+    date: dayjs().format('DD/MM'),
+    userId: user._id
+  });
+  res.sendStatus(201);
+} catch (error) {
+  console.log("Erro ao adicionar nova transacao");
+  console.log(error);
+  return res.sendStatus(500);
+}
+})
+
+
 
 
 const port = process.env.PORTA || 5000;
